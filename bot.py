@@ -9,3 +9,4 @@ class CommunistBot(commands.Bot):
 
     async def on_message(self, msg):
         print(f'{msg.created_at} {msg.author} {msg.content}')
+        await msg.add_reaction("\N{EYES}")
