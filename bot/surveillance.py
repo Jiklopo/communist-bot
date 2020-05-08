@@ -5,15 +5,16 @@ import discord.ext.commands as cmd
 path = 'resources/targets.kgb'
 
 
-class Watcher(cmd.Cog):
+class Surveillance(cmd.Cog):
     users = []
 
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
-        Watcher.users = self.decode()
+        Surveillance.users = self.decode()
 
     @cmd.command()
     async def watch(self, ctx: cmd.Context):
+        """Начать слежку за кем-то."""
         if ctx.message.mention_everyone:
             await ctx.send('Слежка за всеми невозможна.')
             return
@@ -23,11 +24,11 @@ class Watcher(cmd.Cog):
     def add(self, user_id):
         if self.bot.user.id == user_id:
             return 'Я слежу за собой. В отличие от некоторых.'
-        if user_id in Watcher.users:
+        if user_id in Surveillance.users:
             return f'Я уже слежу за <@{user_id}>'
         with open(path, 'a') as f:
             f.write(str(user_id))
-            Watcher.users.append(user_id)
+            Surveillance.users.append(user_id)
             return f'Начал слежку за <@{user_id}>'
 
     @staticmethod
@@ -38,4 +39,4 @@ class Watcher(cmd.Cog):
 
     @staticmethod
     def is_watching(user_id):
-        return user_id in Watcher.users
+        return user_id in Surveillance.users

@@ -1,3 +1,6 @@
-from bot import bot
+import os
+from bot.combot import CommunistBot
 
-bot.start()
+bot = CommunistBot(command_prefix='!')
+TOKEN = os.getenv('TOKEN')
+bot.run(TOKEN)
