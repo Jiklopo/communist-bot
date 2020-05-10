@@ -8,7 +8,7 @@ class Music(commands.Cog):
 
     @commands.command()
     async def anthem(self, msg: Message):
-        """Испольнить Гимн СССР в голосовом канале, в котором вы находитесь"""
+        """Исполнить Гимн СССР в голосовом канале, в котором вы находитесь"""
         try:
             ch = msg.author.voice.channel
             voice = await ch.connect()
