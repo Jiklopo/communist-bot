@@ -77,7 +77,7 @@ def _get_query(table_name, *columns, **query):
 
 def _get_connection():
     if os.getenv('ENV') == 'HEROKU':
-        return pg.connect(DATABASE_URL, database='communist_bot', sslmode='require')
+        return pg.connect(DATABASE_URL, sslmode='require')
     return pg.connect(database='communist_bot')
 
 
