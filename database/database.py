@@ -1,24 +1,50 @@
 import os
 import psycopg2 as pg
+import psycopg2.errorcodes as er_code
+from psycopg2.errors import lookup
 
-DATABASE_URL = os.getenv('DATABASE_URL')
 DB_NAME = 'communist_bot'
+DATABASE_URL = os.getenv('DATABASE_URL')
 USER = os.getenv('DB_USERNAME')
 PSW = os.getenv('DB_PASSWORD')
 
 
 def add_user(user_id: int, username: str):
-    if not _get_query('users', id=user_id):
+    try:
         _insert_query('users', id=user_id, username=username)
+        return True
+    except pg.IntegrityError as e:
+        print(e)
+        return False
 
 
 def start_watching(watcher_id: int, target_id: int):
-    _insert_query('surveillance', watcher_id=watcher_id, target_id=target_id)
+    res = 'Возникли непредвиденные ошибки в архиве.'
+    try:
+        _insert_query('surveillance', watcher_id=watcher_id, target_id=target_id)
+        res = f'<@{watcher_id}> ведет наблюдение за <@{target_id}>'
+    except lookup(er_code.CHECK_VIOLATION) as e:
+        res = 'Следить за самим собой обязанность каждого Коммуниста.'
+    except lookup(er_code.UNIQUE_VIOLATION) as e:
+        res = f'<@{watcher_id}> уже ведет наблюдение за <@{target_id}>'
+    except Exception as e:
+        print(e)
+    finally:
+        return res
+
+
+def stop_watching(watcher_id: int, target_id: int):
+    if _get_query('surveillance', watcher_id=watcher_id, target_id=target_id):
+        _delete_query('surveillance', watcher_id=watcher_id, target_id=target_id)
+        return f'<@{watcher_id}> прекратил наблюдение за <@{target_id}>'
+    return f'<@{watcher_id}> еще не ведет наблюдение за товарищем <@{target_id}>'
+
+
+def is_watching(target_id):
+    return len(_get_query('surveillance', target_id=target_id)) > 0
 
 
 def _insert_query(table_name, **kwargs):
-    if not kwargs:
-        raise AttributeError
     with _get_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute(
@@ -27,22 +53,32 @@ def _insert_query(table_name, **kwargs):
             conn.commit()
 
 
-def _get_all(table_name, *columns):
-    return _get_query(table_name, *columns)
+def _delete_query(table_name, **query):
+    with _get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                f'DELETE FROM {table_name} WHERE {_get_filter(query)};',
+                tuple(query.values())
+            )
+            conn.commit()
 
 
 def _get_query(table_name, *columns, **query):
     with _get_connection() as conn:
         with conn.cursor() as cursor:
             cols = _get_string(columns) if columns else '*'
-            cursor.execute(f'SELECT {cols} FROM {table_name} WHERE {_get_filter(query)}',
-                           tuple(query.values()) if query else None)
+            cursor.execute(
+                f'SELECT {cols} FROM {table_name} WHERE {_get_filter(query)}',
+                tuple(query.values()) if query else None
+            )
             data = cursor.fetchall()
     return data
 
 
 def _get_connection():
-    return pg.connect(database=DB_NAME, user=USER, password=PSW)
+    if os.getenv('ENV') == 'HEROKU':
+        return pg.connect(DATABASE_URL, database='communist_bot', sslmode='require')
+    return pg.connect(database='communist_bot')
 
 
 def _get_string(arr):
@@ -66,9 +102,3 @@ def _get_filter(query: dict):
     for i in query:
         res += f'{i}=%s and '
     return res[:-5]
-
-
-if __name__ == '__main__':
-    print(_get_all('users'))
-    add_user(2, 'vasya')
-    print(_get_all('users'))

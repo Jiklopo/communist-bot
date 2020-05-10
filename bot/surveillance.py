@@ -1,4 +1,5 @@
 import discord
+from database import database as db
 import discord.ext.commands as cmd
 
 # Not an archive!
@@ -6,11 +7,8 @@ path = 'resources/targets.kgb'
 
 
 class Surveillance(cmd.Cog):
-    users = []
-
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
-        Surveillance.users = self.decode()
 
     @cmd.command()
     async def watch(self, ctx: cmd.Context):
@@ -19,24 +17,29 @@ class Surveillance(cmd.Cog):
             await ctx.send('Слежка за всеми невозможна.')
             return
         for m in ctx.message.mentions:
-            await ctx.send(self.add(m.id))
+            await ctx.send(self.start(ctx.message.author, m))
 
-    def add(self, user_id):
-        if self.bot.user.id == user_id:
+    @cmd.command()
+    async def unwatch(self, ctx: cmd.Context):
+        """Прекратить слежку за кем-то"""
+        if ctx.message.mention_everyone:
+            await ctx.send('Перестать следить за всеми невозможно.')
+            return
+        for m in ctx.message.mentions:
+            await ctx.send(self.stop(ctx.message.author, m))
+
+    def start(self, watcher, target):
+        if self.bot.user == target:
             return 'Я слежу за собой. В отличие от некоторых.'
-        if user_id in Surveillance.users:
-            return f'Я уже слежу за <@{user_id}>'
-        with open(path, 'a') as f:
-            f.write(str(user_id))
-            Surveillance.users.append(user_id)
-            return f'Начал слежку за <@{user_id}>'
+        db.add_user(watcher.id, watcher.name)
+        db.add_user(target.id, target.name)
+        return db.start_watching(watcher.id, target.id)
 
-    @staticmethod
-    def decode():
-        with open(path, 'r') as f:
-            users = f.read().split('\n')
-        return [int(u) for u in users]
+    def stop(self, watcher, target):
+        if self.bot.user.id == target.id:
+            return 'Всегда слежу за собой и Вам советую.'
+        return db.stop_watching(watcher.id, target.id)
 
     @staticmethod
     def is_watching(user_id):
-        return user_id in Surveillance.users
+        return db.is_watching(user_id)
