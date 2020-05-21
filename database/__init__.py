@@ -10,8 +10,8 @@ with _get_connection() as conn:
             cursor.execute(s.read())
         with open(path + 'countries.sql') as c:
             cursor.execute(c.read())
-            if not _get_query('countries'):
-                data = requests.get('https://api.covid19api.com/countries').json()
-                for i in data:
-                    _insert_query('countries', **i)
     conn.commit()
+if not _get_query('countries'):
+    data = requests.get('https://api.covid19api.com/countries').json()
+    for i in data:
+        _insert_query('countries', **i)
