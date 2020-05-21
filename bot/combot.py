@@ -1,5 +1,7 @@
 import os
 from discord.ext import commands as cmd
+
+from bot.information import Information
 from bot.surveillance import Surveillance
 from bot.music import Music
 
@@ -10,6 +12,7 @@ class CommunistBot(cmd.Bot):
     async def on_ready(self):
         self.add_cog(Music(self))
         self.add_cog(Surveillance(self))
+        self.add_cog(Information(self))
         print(f'Started as {self.user}')
 
     async def on_message(self, msg):

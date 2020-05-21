@@ -2,9 +2,6 @@ import discord
 from database import database as db
 import discord.ext.commands as cmd
 
-# Not an archive!
-path = 'resources/targets.kgb'
-
 
 class Surveillance(cmd.Cog):
     def __init__(self, bot: cmd.Bot):
