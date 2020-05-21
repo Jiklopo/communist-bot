@@ -20,7 +20,7 @@ class Information(cmd.Cog):
     def global_covid_info(self):
         response = requests.get(self.url + 'summary')
         data = response.json()['Global']
-        return f"""Глобальная статистика по распространению COVID-19 на {response.json()['Date']}
+        return f"""Глобальная статистика по распространению COVID-19 на {response.json()['Date'][:10]}
 Новых случаев: {data['NewConfirmed']:,}
 Всего зафиксировано случаев: {data['TotalConfirmed']:,}
 Новых летальных случаев: {data['NewDeaths']:,}
