@@ -44,6 +44,13 @@ def is_watching(target_id):
     return len(_get_query('surveillance', target_id=target_id)) > 0
 
 
+def get_country_name(country_code):
+    country = _get_query('countries', **{'iso2': country_code})
+    if not country:
+        return False
+    return country[0][2]
+
+
 def _insert_query(table_name, **kwargs):
     with _get_connection() as conn:
         with conn.cursor() as cursor:
