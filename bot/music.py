@@ -27,15 +27,14 @@ class Music(cmd.Cog):
         """Исполнить Гимн СССР в голосовом канале, в котором вы находитесь"""
         if not ctx.author.voice:
             await ctx.send('Вы не в голосовом канале!')
-        voice = self.find_vc(ctx.guild)
-        self.queue[ctx.guild.id].add_song(Song('Гимн СССР', 'anthem', 0))
-        if not voice:
-            ch = ctx.author.voice.channel
-            voice = await ch.connect()
-            voice.play(FFmpegOpusAudio(self.queue[ctx.guild.id].current_song.filename))
+        q = self.queue[ctx.guild.id]
+        if not q.add_song(Song('Гимн СССР', 'anthem', 1)):
+            await ctx.send('Гимн Великой Державы уже в очереди.')
             return
-        elif voice.is_playing():
-            await ctx.send('Гимн поставлен в очередь.')
+        voice = self.find_vc(ctx.guild)
+        if not voice:
+            voice = await ctx.author.voice.channel.connect()
+            voice.play(FFmpegOpusAudio(q.current_song.filename))
 
     @cmd.command()
     async def play(self, ctx: cmd.Context, link):
@@ -43,28 +42,37 @@ class Music(cmd.Cog):
         if not ctx.author.voice:
             await ctx.send('Вы не в голосовом канале!')
             return
-        ch = ctx.author.voice.channel
-        voice: VoiceClient = self.find_vc(ctx.guild)
-        if not voice:
-            voice = await ch.connect()
         info = self.ydl.extract_info(link, download=False)
         if info['duration'] > 600:
             await ctx.send('Видео должно быть короче 10 минут')
             return
+
+        if not self.queue[ctx.guild.id].add_song(Song(info['title'], info['id'], info['duration'])):
+            await ctx.send('Эта композиция уже есть в очереди.')
+            return
+
+        ch = ctx.author.voice.channel
+        voice: VoiceClient = self.find_vc(ctx.guild)
+        if not voice:
+            voice = await ch.connect()
+
         self.ydl.download([link])
-        self.queue[ctx.guild.id].add_song(Song(info['title'], info['id'], info['duration']))
+
         if voice.is_playing() or voice.is_paused():
             await ctx.send(f"{info['title']!r} в очереди.")
         else:
             voice.play(FFmpegOpusAudio(self.queue[ctx.guild.id].current_song.filename), after=self.next_song)
+            await ctx.send(f"Включаю {info['title']!r}.")
 
     def next_song(self, error=None):
         for v in self.bot.voice_clients:
             if not v.is_playing():
                 songs = self.queue[v.guild.id].skip_song()
-                v.play(FFmpegOpusAudio(songs[1].filename), after=self.next_song)
                 if songs[0].title != 'Гимн СССР':
                     os.remove(songs[0].filename)
+                if not songs[1]:
+                    return
+                v.play(FFmpegOpusAudio(songs[1].filename), after=self.next_song)
 
     @cmd.command()
     async def pause(self, ctx: cmd.Context):
@@ -101,17 +109,21 @@ class Music(cmd.Cog):
         if not v:
             await ctx.send('Я не в голоовом канале.')
         elif v.is_paused() or v.is_playing():
-            self.queue[ctx.guild.id].clear_queue()
             v.stop()
+            for s in self.queue[ctx.guild.id].queue:
+                if s.title != 'Гимн СССР':
+                    os.remove(s.filename)
+            self.queue[ctx.guild.id].clear_queue()
         else:
             await ctx.send('Ничего не играет.')
 
     @cmd.command()
     async def skip(self, ctx: cmd.Context):
         """Пропустить текущий трек."""
+        q = self.queue[ctx.guild.id]
+        songs = [q.current_song, q.next_song]
         v: VoiceClient = self.find_vc(ctx.guild)
         v.stop()
-        songs = self.queue[ctx.guild.id].skip_song()
         await ctx.send(f'Пропускаю {songs[0]}.')
         if not songs[1]:
             await ctx.send('В очереди не осталось песен.')
@@ -130,6 +142,12 @@ class Music(cmd.Cog):
             for i, v in enumerate(song_list):
                 ans += f"{i + 1}. {v.title}\n"
         await ctx.send(ans)
+
+    @cmd.command()
+    async def leave(self, ctx: cmd.Context):
+        v = self.find_vc(ctx.guild)
+        if v:
+            await v.disconnect()
 
     def find_vc(self, guild):
         for v in self.bot.voice_clients:

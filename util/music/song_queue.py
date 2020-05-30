@@ -2,18 +2,20 @@ from util.music.song import Song
 
 
 class SongQueue:
-    def __init__(self, unique=False):
+    def __init__(self, unique=True):
         self.queue = []
         self.unique = unique
 
     def add_song(self, song: Song):
         if not self.unique:
             self.queue.append(song)
+            return True
         else:
-            for i in range(self.current_song, self.songs):
-                if self.queue[i] == song.filename:
-                    return
+            for s in self.queue:
+                if s.filename == song.filename:
+                    return False
             self.queue.append(song)
+            return True
 
     def vote_song(self):
         s = self.queue[0]
@@ -43,7 +45,7 @@ class SongQueue:
 
     @property
     def next_song(self):
-        if self.songs == 1:
+        if self.songs < 2:
             return None
         return self.queue[1]
 
