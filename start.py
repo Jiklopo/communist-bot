@@ -1,6 +1,5 @@
-import os
+import config as cfg
 from bot.combot import CommunistBot
 
 bot = CommunistBot(command_prefix='!')
-TOKEN = os.getenv('TOKEN')
-bot.run(TOKEN)
+bot.run(cfg.TOKEN)

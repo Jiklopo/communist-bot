@@ -21,7 +21,7 @@ class SongQueue:
         s = self.queue[0]
         s.votes += 1
         if s.votes >= s.skip_votes:
-            self.skip_song()
+            return self.skip_song()
 
     def skip_song(self):
         res = tuple([self.current_song, self.next_song])

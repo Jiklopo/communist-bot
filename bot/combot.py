@@ -1,42 +1,25 @@
-import os
+import shutil
+import config as cfg
 from discord.ext import commands as cmd
 
 from bot.information import Information
 from bot.surveillance import Surveillance
 from bot.music import Music
 
-ENV = os.getenv('ENV')
-
 
 class CommunistBot(cmd.Bot):
     async def on_ready(self):
-        self.add_cog(Music(self))
-        self.add_cog(Surveillance(self))
-        self.add_cog(Information(self))
+        shutil.rmtree(cfg.SONGS_PATH, True)
+        if cfg.MUSIC_ENABLED:
+            self.add_cog(Music(self))
+        if cfg.SURVEILLANCE_ENABLED:
+            self.add_cog(Surveillance(self))
+        if cfg.INFORMATION_ENABLED:
+            self.add_cog(Information(self))
         print(f'Started as {self.user}')
 
     async def on_message(self, msg):
         print(f'{msg.created_at} {msg.author} {msg.content}')
-        if Surveillance.is_watching(msg.author.id):
+        if cfg.SURVEILLANCE_ENABLED and Surveillance.is_watching(msg.author.id):
             await msg.add_reaction('\N{EYES}')
         await self.process_commands(msg)
-
-    @cmd.command()
-    async def leave(self, msg):
-        """Покинуть голосовой канал."""
-        try:
-            ch = msg.author.voice.channel
-        except AttributeError:
-            await msg.channel.send('Вы не подключены к голосовому каналу!')
-            return
-
-        if not self.voice_clients:
-            return
-
-        for v in self.voice_clients:
-            if v.channel == ch:
-                await v.disconnect()
-                await msg.channel.send('До свидания.')
-                return
-
-        await msg.channel.send('Меня нет с Вами в канале.')
