@@ -3,6 +3,7 @@ from discord import FFmpegOpusAudio, VoiceClient
 from discord.ext import commands as cmd
 import youtube_dl as yt
 import os
+import config as cfg
 
 
 class Music(cmd.Cog):
@@ -10,7 +11,7 @@ class Music(cmd.Cog):
         self.bot = bot
         self.ydl_opts = {
             'format': 'bestaudio',
-            'outtmpl': 'resources/%(id)s.opus',
+            'outtmpl': f'{cfg.SONGS_PATH}/%(id)s.opus',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'opus',
@@ -38,7 +39,7 @@ class Music(cmd.Cog):
 
     @cmd.command()
     async def play(self, ctx: cmd.Context, link):
-        """Исполнить композицию с буржуийского сервиса YouTube. Необходима ссылка."""
+        """Исполнить композицию с буржуийского YouTube. Необходима ссылка."""
         if not ctx.author.voice:
             await ctx.send('Вы не в голосовом канале!')
             return
@@ -107,15 +108,13 @@ class Music(cmd.Cog):
         """Остановить текущий трек и очистить очередь."""
         v = self.find_vc(ctx.guild)
         if not v:
-            await ctx.send('Я не в голоовом канале.')
+            await ctx.send('Я не в голосовом канале.')
         elif v.is_paused() or v.is_playing():
             v.stop()
-            for s in self.queue[ctx.guild.id].queue:
-                if s.title != 'Гимн СССР':
-                    os.remove(s.filename)
-            self.queue[ctx.guild.id].clear_queue()
+            self.delete_all_songs([ctx.guild])
         else:
             await ctx.send('Ничего не играет.')
+        await v.disconnect()
 
     @cmd.command()
     async def skip(self, ctx: cmd.Context):
@@ -143,13 +142,25 @@ class Music(cmd.Cog):
                 ans += f"{i + 1}. {v.title}\n"
         await ctx.send(ans)
 
-    @cmd.command()
-    async def leave(self, ctx: cmd.Context):
-        v = self.find_vc(ctx.guild)
-        if v:
-            await v.disconnect()
-
     def find_vc(self, guild):
         for v in self.bot.voice_clients:
             if v.guild == guild:
                 return v
+
+    def delete_songs(self, songs: [Song]):
+        if cfg.SAVE_SONGS:
+            return
+        for s in songs:
+            if s.title == 'Гимн СССР':
+                continue
+            os.remove(s.filename)
+
+    def delete_all_songs(self, guilds):
+        if cfg.SAVE_SONGS:
+            return
+        for g in guilds:
+            q = self.queue.get(g.id)
+            if q:
+                for s in q.queue:
+                    os.remove(s.filename)
+                q.clear_queue()

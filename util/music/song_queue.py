@@ -1,6 +1,5 @@
 from util.music.song import Song
 
-
 class SongQueue:
     def __init__(self, unique=True):
         self.queue = []
